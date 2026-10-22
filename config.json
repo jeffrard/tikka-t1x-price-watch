@@ -1,0 +1,22 @@
+{
+  "product_name": "Tikka T1x MTR 17 HMR 20\" (right hand)",
+  "target_price": 500.0,
+  "timezone": "America/Chicago",
+  "digest_hour": 12,
+
+  "upcs": ["082442898360"],
+
+  "must_match_all": ["17"],
+  "must_match_any": ["20", "082442898360", "jrt1x309"],
+  "exclude_any": ["left hand", "left-hand", " lh", "jrt1x409", "16\"", "16 in", "16in", "roughtech", "upr", ".22", "22lr", "22 lr", "22 long"],
+
+  "aggregator_pages": [
+    "https://www.gunmade.com/guns/rifles/tikka/t1x-mtr/082442898360/",
+    "https://www.gunmade.com/search/?keyword=082442898360"
+  ],
+
+  "retailer_pages": [
+    "https://www.kygunco.com/product/tikka-jrt1x309-t1x-mtr-17-hmr-20-10rd",
+    "https://www.sportsmans.com/shooting-gear-gun-supplies/rifles/tikka-t1x-mtr-black-bolt-action-rifle-17-hmr-20in/p/1502014"
+  ]
+}
