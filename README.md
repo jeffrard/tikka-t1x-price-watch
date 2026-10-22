@@ -11,7 +11,7 @@ It runs free on GitHub Actions every 30 minutes and uses no Claude credits.
 
 ### 1. Set up ntfy on your phone
 1. Install **ntfy** from the App Store or Google Play.
-2. Tap **+** (Subscribe to topic) and enter a random topic name, such as `jared-tikka-8f3kq2`.
+2. Tap **+** (Subscribe to topic) and enter a random topic name, such as `yourname-tikka-<random letters and numbers>`.
    - The topic name is the only "password." Anyone who knows it can read or send your alerts, so make it hard to guess.
 3. Leave the server as the default (`ntfy.sh`) and tap **Subscribe**.
 4. **iPhone:** allow notifications when it asks.
@@ -28,7 +28,7 @@ Go to **Settings → Secrets and variables → Actions → New repository secret
 
 | Name | Value |
 |---|---|
-| `NTFY_TOPIC` | your topic name from step 1, exactly as typed (for example `jared-tikka-8f3kq2`) |
+| `NTFY_TOPIC` | your topic name from step 1, exactly as typed (for example `yourname-tikka-<random letters and numbers>`) |
 
 ### 4. Test it
 **Actions** tab → **Tikka price watch** → **Run workflow** → tick **Send the daily summary notification right now** → **Run workflow**.
