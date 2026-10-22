@@ -69,20 +69,39 @@ class Listing:
 
 # ---------------------------------------------------------------- helpers
 
+class Blocked(Exception):
+    """The site refused us (rate-limit / bot protection)."""
+
+
+class OutOfStock(Exception):
+    """The page loaded fine but says the item is out of stock."""
+
+
 def fetch(url: str) -> str:
-    resp = requests.get(url, headers=HEADERS, timeout=30)
-    resp.raise_for_status()
-    return resp.text
+    for attempt in range(2):
+        resp = requests.get(url, headers=HEADERS, timeout=30)
+        if resp.status_code in (403, 429, 503) and attempt == 0:
+            wait = resp.headers.get("Retry-After", "10")
+            time.sleep(min(int(wait) if wait.isdigit() else 10, 20))
+            continue
+        if resp.status_code in (403, 429, 503):
+            raise Blocked(f"HTTP {resp.status_code}")
+        resp.raise_for_status()
+        return resp.text
+    raise Blocked("retry failed")
 
 
 def parse_price(text: str) -> float | None:
-    m = PRICE_RE.search(text or "")
-    if not m:
-        return None
-    try:
-        return float(m.group(1).replace(",", ""))
-    except ValueError:
-        return None
+    """First dollar amount in text that is plausible for a rifle."""
+    lo, hi = CONFIG.get("price_sanity", [250, 2000])
+    for m in PRICE_RE.finditer(text or ""):
+        try:
+            v = float(m.group(1).replace(",", ""))
+        except ValueError:
+            continue
+        if lo <= v <= hi:
+            return v
+    return None
 
 
 def matches_product(text: str) -> bool:
@@ -94,41 +113,54 @@ def matches_product(text: str) -> bool:
     return any(x.lower() in t for x in CONFIG["must_match_any"])
 
 
-# ------------------------------------------------------- Gun Made parsing
+def title_has_no_excludes(title: str) -> bool:
+    t = " " + title.lower() + " "
+    return not any(x.lower() in t for x in CONFIG["exclude_any"])
 
-def parse_gunmade(html: str, page_url: str) -> list[Listing]:
-    """Each listing on Gun Made is a card with a title link to /go/..., a price
-    (or 'MAP' when the store hides it), a condition, a UPC and a store name.
-    We find every /go/ title link and climb to the smallest ancestor that holds
-    exactly one such link: that ancestor is the card."""
+
+def host(url: str) -> str:
+    return re.sub(r"^www\.", "", url.split("/")[2])
+
+
+# ------------------------------------------- aggregator / search-result pages
+
+def parse_listing_page(html: str, page_url: str) -> list[Listing]:
+    """Works on Gun Made, gun.deals, GunPrime and similar search pages.
+
+    Each listing is a 'card' holding a product-title link and a price. We find
+    candidate title links, then climb to the smallest ancestor that holds only
+    one of them: that ancestor is the card. Cards with no visible dollar price
+    (e.g. 'MAP' / 'see price in cart') are skipped."""
     soup = BeautifulSoup(html, "html.parser")
+    is_gunmade = "gunmade.com" in page_url
+
+    def is_candidate(a) -> bool:
+        if is_gunmade:
+            return "/go/" in a.get("href", "")
+        text = (a.get("title") or a.get_text(" ", strip=True)).lower()
+        return len(text) >= 8 and "t1x" in text and "17" in text
+
+    cands = [a for a in soup.find_all("a", href=True) if is_candidate(a)]
+    cand_hrefs = lambda el: {x["href"] for x in el.find_all("a", href=True) if is_candidate(x)}
+
     out: list[Listing] = []
     seen: set[str] = set()
-
-    for a in soup.select('a[href*="/go/"]'):
+    for a in cands:
         title = a.get("title") or a.get_text(" ", strip=True)
-        if not title or len(title) < 8:
-            continue
         href = urljoin(page_url, a["href"])
-        if href in seen:
+        if href in seen or not title_has_no_excludes(title):
             continue
 
         card = a
-        for _ in range(8):
+        for _ in range(10):
             parent = card.parent
-            if parent is None:
-                break
-            go_links = {x["href"] for x in parent.select('a[href*="/go/"]')}
-            if len(go_links) > 1:
+            if parent is None or len(cand_hrefs(parent)) > 1:
                 break
             card = parent
         text = card.get_text(" ", strip=True)
 
-        # Ignore anything without a visible dollar price ("MAP" = hidden).
         price = parse_price(text)
         if price is None:
-            continue
-        if not title_has_no_excludes(title):
             continue
         # If the card shows a UPC, trust it: keep only our exact UPC(s).
         # Otherwise fall back to matching the title text.
@@ -138,53 +170,54 @@ def parse_gunmade(html: str, page_url: str) -> list[Listing]:
                 continue
         elif not matches_product(title):
             continue
+        if re.search(r"out of stock|sold out", text, re.I):
+            continue
 
         condition = "Used" if re.search(r"\bused\b", text, re.I) else "New"
-        store = guess_store(card)
         seen.add(href)
-        out.append(Listing(title, price, store, href, condition, "Gun Made"))
+        out.append(Listing(title, price, guess_store(card, page_url), href,
+                           condition, host(page_url)))
     return out
 
 
-def title_has_no_excludes(title: str) -> bool:
-    t = " " + title.lower() + " "
-    return not any(x.lower() in t for x in CONFIG["exclude_any"])
-
-
-def guess_store(card) -> str:
-    # Store names link to /stores/...; online-only stores are plain text.
+def guess_store(card, page_url: str) -> str:
+    # Gun Made: store names link to /stores/...; online-only stores are text
+    # on the line after the UPC.
     a = card.select_one('a[href*="/stores/"]')
     if a:
         return a.get("title") or a.get_text(" ", strip=True)
-    # On Gun Made the store name follows the UPC line.
     lines = [l for l in card.get_text("\n", strip=True).splitlines() if l.strip()]
-    for i, line in enumerate(lines):
-        if re.search(r"\b\d{12}\b", line):
-            for nxt in lines[i + 1:i + 4]:
-                if nxt.upper() != "UPC" and not re.search(r"^\d|\$|reviews", nxt, re.I):
-                    return nxt
+    if "gunmade.com" in page_url:
+        for i, line in enumerate(lines):
+            if re.search(r"\b\d{12}\b", line):
+                for nxt in lines[i + 1:i + 4]:
+                    if nxt.upper() != "UPC" and not re.search(r"^\d|\$|reviews", nxt, re.I):
+                        return nxt
     for line in lines:
-        if re.search(r"\.(com|net|us)\b", line, re.I):
-            return line
-    return "unknown store"
+        m = re.search(r"\b([a-z0-9-]+\.(?:com|net|us|store|shop))\b", line, re.I)
+        if m and host(page_url) not in m.group(1).lower():
+            return m.group(1).lower()
+    return f"via {host(page_url)}"
 
 
-# ------------------------------------------- retailer pages (JSON-LD offers)
+# ------------------------------------------- retailer product pages
 
 def parse_retailer(html: str, page_url: str) -> list[Listing]:
+    """Single product page. Prefers the structured product data (JSON-LD) most
+    stores embed for Google Shopping; falls back to price meta tags."""
     soup = BeautifulSoup(html, "html.parser")
-    title = (soup.title.get_text(strip=True) if soup.title else page_url)
-    store = re.sub(r"^www\.", "", page_url.split("/")[2])
+    title = soup.title.get_text(strip=True) if soup.title else page_url
+    store = host(page_url)
+    lo, hi = CONFIG.get("price_sanity", [250, 2000])
 
+    out_of_stock = False
     for tag in soup.find_all("script", type="application/ld+json"):
         try:
             data = json.loads(tag.string or "")
         except (json.JSONDecodeError, TypeError):
             continue
         for node in walk(data):
-            if not isinstance(node, dict):
-                continue
-            if "Product" not in str(node.get("@type", "")):
+            if not isinstance(node, dict) or "Product" not in str(node.get("@type", "")):
                 continue
             offers = node.get("offers")
             for offer in offers if isinstance(offers, list) else [offers]:
@@ -192,25 +225,25 @@ def parse_retailer(html: str, page_url: str) -> list[Listing]:
                     continue
                 raw = offer.get("price") or offer.get("lowPrice")
                 try:
-                    price = float(str(raw).replace(",", ""))
+                    price = float(str(raw).replace(",", "").replace("$", ""))
                 except (TypeError, ValueError):
                     continue
-                if price <= 0:
+                if not lo <= price <= hi:
                     continue
-                avail = str(offer.get("availability", ""))
-                if "OutOfStock" in avail:
-                    return []
-                name = node.get("name") or title
-                return [Listing(name, price, store, page_url, "New", store)]
+                if re.search(r"OutOfStock|SoldOut|Discontinued", str(offer.get("availability", ""))):
+                    out_of_stock = True
+                    continue
+                return [Listing(node.get("name") or title, price, store, page_url, "New", store)]
+    if out_of_stock:
+        raise OutOfStock()
 
-    # Fallback: first price near the top of the page (meta tags first).
-    meta = soup.find("meta", attrs={"property": "product:price:amount"}) or \
-        soup.find("meta", attrs={"itemprop": "price"})
-    if meta and meta.get("content"):
-        try:
-            return [Listing(title, float(meta["content"]), store, page_url, "New", store)]
-        except ValueError:
-            pass
+    for attrs in ({"property": "product:price:amount"}, {"property": "og:price:amount"},
+                  {"itemprop": "price"}):
+        tag = soup.find(["meta", "span", "div"], attrs=attrs)
+        val = tag and (tag.get("content") or tag.get_text(strip=True))
+        price = parse_price("$" + str(val).lstrip("$")) if val else None
+        if price:
+            return [Listing(title, price, store, page_url, "New", store)]
     return []
 
 
@@ -268,18 +301,22 @@ def save_state(state: dict) -> None:
 def collect() -> tuple[list[Listing], dict[str, str]]:
     listings: list[Listing] = []
     health: dict[str, str] = {}
-    jobs = [(u, parse_gunmade) for u in CONFIG["aggregator_pages"]] + \
+    jobs = [(u, parse_listing_page) for u in CONFIG["aggregator_pages"]] + \
            [(u, parse_retailer) for u in CONFIG["retailer_pages"]]
     for url, parser in jobs:
         try:
             found = parser(fetch(url), url)
             listings += found
             health[url] = f"ok ({len(found)} listing{'s' if len(found) != 1 else ''})"
+        except OutOfStock:
+            health[url] = "ok (out of stock)"
+        except Blocked as e:
+            health[url] = f"BLOCKED: {e}"
         except Exception as e:  # noqa: BLE001 - report any failure, keep going
             health[url] = f"FAILED: {type(e).__name__}: {str(e)[:120]}"
-        time.sleep(2)  # be polite
+        time.sleep(1.5)  # be polite
 
-    # Deduplicate by store+price, keep cheapest per store.
+    # Keep the cheapest listing per store.
     best: dict[str, Listing] = {}
     for l in listings:
         k = l.store.lower()
@@ -303,9 +340,10 @@ def main() -> int:
         print(f"  [{h}] {url}")
 
     # Track consecutive failures per source (shown in the digest).
-    for url, h in health.items():
-        fails = state["source_failures"].get(url, 0)
-        state["source_failures"][url] = fails + 1 if h.startswith("FAILED") else 0
+    state["source_failures"] = {
+        url: (state["source_failures"].get(url, 0) + 1 if h.startswith("FAILED") else 0)
+        for url, h in health.items()
+    }
 
     # ---- instant alerts
     hits = [l for l in listings if l.price < target and l.key not in state["alerted"]]
@@ -333,12 +371,16 @@ def main() -> int:
             top = "\n\n".join(fmt(l) for l in listings[:3])
             title = f"Tikka daily: ${listings[0].price:,.2f} at {listings[0].store}"
         else:
-            top = "No listings with a visible price today (most stores show 'MAP')."
+            top = "No in-stock listings with a visible price right now."
             title = "Tikka daily: no price found"
         broken = [re.sub(r"^https?://(www\.)?", "", u).split("/")[0]
                   for u, n in state["source_failures"].items() if n >= 6]
-        ok = sum(1 for h in health.values() if not h.startswith("FAILED"))
-        status = f"Sources working: {ok}/{len(health)}"
+        ok = sum(1 for h in health.values() if h.startswith("ok"))
+        priced = sum(1 for h in health.values() if re.match(r"ok \([1-9]", h))
+        blocked = sorted({host(u) for u, h in health.items() if h.startswith("BLOCKED")})
+        status = f"Sources checked: {ok}/{len(health)} ({priced} with a price)"
+        if blocked:
+            status += "\nBlocked today: " + ", ".join(blocked)
         if broken:
             status += "\nBroken 3+ hrs: " + ", ".join(sorted(set(broken)))
         notify(title, f"{top}\n\n{status}\nTarget: under ${target:,.0f}",

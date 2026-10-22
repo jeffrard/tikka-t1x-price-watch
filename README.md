@@ -7,6 +7,8 @@ Watches prices for the **Tikka T1x MTR, 17 HMR, 20" barrel (right hand, UPC 0824
 
 It runs free on GitHub Actions every 30 minutes and uses no Claude credits.
 
+**What it checks:** gun.deals and GunPrime searches for this exact UPC/model number, Gun Made (often blocks GitHub, which is reported as "blocked", not broken), and this rifle's product page at 25 retailers. Out-of-stock pages and hidden "MAP" prices are skipped.
+
 ## Setup (about 5 minutes)
 
 ### 1. Set up ntfy on your phone
@@ -44,11 +46,12 @@ Everything you might want to change is in `config.json`:
 - `digest_hour`: hour for the daily summary (24-hour clock, Central time).
 - `upcs`: add `082442932880` to also watch the **left-hand** 20".
 - `retailer_pages`: add any retailer product page for this rifle. The script reads the price from the page's built-in product data, which most big retailers include.
+- `aggregator_pages`: search-result pages (gun.deals, GunPrime, Gun Made) that list many stores at once.
 
 To change how often it checks, edit the `cron` line in `.github/workflows/price-watch.yml`. To pause it: **Actions → Tikka price watch → ⋯ → Disable workflow**.
 
 ## Good to know
 - Many dealers hide the price as "MAP" (minimum advertised price). Those listings are skipped because there's no number to compare.
 - Prices don't include shipping or FFL transfer fees.
-- If a website changes its layout or blocks GitHub's servers, the daily summary shows fewer working sources and names any that have been broken for 3+ hours.
+- The daily summary shows how many sources were checked, how many had a price, which sites blocked the check, and any that have been broken for 3+ hours.
 - GitHub turns off scheduled workflows in repos with no activity for 60 days. The daily state update counts as activity, so this shouldn't happen. If it ever does, re-enable the workflow from the Actions tab.
