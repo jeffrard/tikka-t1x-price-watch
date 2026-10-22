@@ -1,10 +1,38 @@
 {
-  "alerted": {},
+  "alerted": {
+    "gunprime.com|https://gunprime.com/products/tikka-t1x-mtr-17-hmr-20-threaded-barrel-jrt1x309|499.00": "2026-10-22T15:49:28.463331-05:00",
+    "via gunprime.com|https://gunprime.com/products/tikka-t1x-mtr-blued-17-hmr-20-inch-10rds-jrt1x309|468.00": "2026-10-22T15:49:28.463331-05:00"
+  },
   "last_digest_date": "2026-10-22",
   "source_failures": {
-    "https://www.gunmade.com/guns/rifles/tikka/t1x-mtr/082442898360/": 1,
-    "https://www.gunmade.com/search/?keyword=082442898360": 1,
+    "https://alexandersstore.com/product/tikka-t1x-17hmr-20-thrd-bl-syn-blk/": 0,
+    "https://ammoandarmsstore.com/jrt1x309/": 1,
+    "https://dukessportshop.com/product/tikka-t1x-17-hmr-bolt-action-rifle-20-barrel-10-round-synthetic-black-stock-black-finish/": 1,
+    "https://grabagun.com/tikka-t1x-mtr-blued-17-hmr-20-inch-10rds.html": 0,
+    "https://gun.deals/search/apachesolr_search/082442898360": 0,
+    "https://gun.deals/search/apachesolr_search/jrt1x309": 0,
+    "https://gunprime.com/products/tikka-t1x-mtr-17-hmr-20-threaded-barrel-jrt1x309": 0,
+    "https://gunprime.com/upc/082442898360": 0,
+    "https://palmettostatearmory.com/tikka-t1x-mtr-17-hmr-bolt-action-rifle-black-jrt1x309.html": 0,
+    "https://pointblankrange.com/product/tikka-t3-jrt1x309-t1x-mtr-17-hmr-101-20-black-right-hand": 0,
+    "https://shop.marksman-llc.com/products/rifles-tikka-jrt1x309-082442898360-2031": 1,
+    "https://shydasoutdoorcenter.com/tikka-t1x-17-hmr-20-blue/synthetic-jrt1x309/": 0,
+    "https://wegsguns.com/product/tikka-t3-jrt1x309-t1x-mtr-17-hmr-101-20-black-right-hand": 0,
+    "https://www.ableammo.com/catalog/tikka-t1x-mtr-bolt-action-rifle-jrt1x309-17hmr-black-synthetic-stock-blued-finish-rds-p-157045.html": 0,
+    "https://www.braderarms.com/tikka-jrt1x309-t1x-17hmr-20-bolt": 0,
+    "https://www.budsgunshop.com/product_info.php/products_id/100635/tikka+t1x+mtr+.17+hmr+20+threaded+barrel+black+synthetic+10+1": 0,
+    "https://www.carterscountry.com/product/tikka-t3-jrt1x309-t1x-mtr-17-hmr-101-20-black-right-hand": 0,
+    "https://www.classicfirearms.com/tikka-t3-jrt1x309-t1x-mtr-bolt-20/": 0,
+    "https://www.covecreekoutfitters.com/product/tikka-t1x-17hmr-20-threaded-jrt1x309/": 1,
+    "https://www.eurooptic.com/Tikka-T1x-17-HMR-20-1-10-Rifle-JRT1X309.aspx": 0,
+    "https://www.gunmade.com/guns/rifles/tikka/t1x-mtr/082442898360/": 0,
+    "https://www.hinterlandoutfitters.com/tikka-jrt1x309-17hmr-bolt-p-79571.html": 0,
+    "https://www.interstateguns.com/tikka-t1x-17-hmr.html": 0,
     "https://www.kygunco.com/product/tikka-jrt1x309-t1x-mtr-17-hmr-20-10rd": 0,
-    "https://www.sportsmans.com/shooting-gear-gun-supplies/rifles/tikka-t1x-mtr-black-bolt-action-rifle-17-hmr-20in/p/1502014": 0
+    "https://www.rkguns.com/tikka-t3-t1x-17-hmr-bolt-action-rifle-10-1-rd-jrt1x309.html": 0,
+    "https://www.scheels.com/p/tikka-t1x-mtr-17-hmr-rifle/1674-JRT1X309": 0,
+    "https://www.sportsmans.com/shooting-gear-gun-supplies/rifles/tikka-t1x-mtr-black-bolt-action-rifle-17-hmr-20in/p/1502014": 0,
+    "https://www.sportsmansoutdoorsuperstore.com/products2.cfm/ID/216746/jrt1x309/tikka-t1x-mtr-17-hmr-bolt-action-rifle": 0,
+    "https://www.targetshotguns.com/products/rifles-tikka-jrt1x309-082442898360-2675": 0
   }
 }
