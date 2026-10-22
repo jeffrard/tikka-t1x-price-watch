@@ -1,1 +1,10 @@
-{"alerted": {}, "last_digest_date": null, "source_failures": {}}
+{
+  "alerted": {},
+  "last_digest_date": "2026-10-22",
+  "source_failures": {
+    "https://www.gunmade.com/guns/rifles/tikka/t1x-mtr/082442898360/": 1,
+    "https://www.gunmade.com/search/?keyword=082442898360": 1,
+    "https://www.kygunco.com/product/tikka-jrt1x309-t1x-mtr-17-hmr-20-10rd": 0,
+    "https://www.sportsmans.com/shooting-gear-gun-supplies/rifles/tikka-t1x-mtr-black-bolt-action-rifle-17-hmr-20in/p/1502014": 0
+  }
+}
